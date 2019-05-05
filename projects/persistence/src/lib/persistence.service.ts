@@ -1,24 +1,27 @@
-import { Injectable, Inject } from '@angular/core';
-import { Observable } from 'rxjs/Observable';
-import { Subscriber } from 'rxjs/Subscriber';
-import { share } from 'rxjs/operators';
-import { PersistenceEvent } from './persistence-event';
-import { PersistenceConfig } from './persistence.config';
-import { PersistenceNotifyOptions } from './persistence-notify-options';
+import { Inject, Injectable } from "@angular/core";
+import { share } from "rxjs/operators";
+import { PersistenceEvent } from "./persistence-event";
+import { PersistenceConfig } from "./persistence.config";
+import { PersistenceNotifyOptions } from "./persistence-notify-options";
+import { Observable, Subscriber } from "rxjs";
+import { Dictionary } from "./dictionary";
 
-const LOCAL_STORAGE_NOT_SUPPORTED = 'LOCAL_STORAGE_NOT_SUPPORTED';
+const LOCAL_STORAGE_NOT_SUPPORTED = "LOCAL_STORAGE_NOT_SUPPORTED";
 
 @Injectable()
 export class PersistenceService {
 	public get errors$(): Observable<string> {
 		return this._errors$;
 	}
+
 	public get warnings$(): Observable<string> {
 		return this._warnings$;
 	}
+
 	public get removeItems$(): Observable<PersistenceEvent> {
 		return this._removeItems$;
 	}
+
 	public get setItems$(): Observable<PersistenceEvent> {
 		return this._setItems$;
 	}
@@ -35,19 +38,19 @@ export class PersistenceService {
 
 	private notifyOptions: PersistenceNotifyOptions = {
 		setItem: false,
-		removeItem: false
+		removeItem: false,
 	};
 
 	private isSupported = false;
-	private prefix = 'ls';
-	private storageType: 'sessionStorage' | 'localStorage' = 'localStorage';
+	private prefix = "ls";
+	private storageType: "sessionStorage" | "localStorage" = "localStorage";
 	private webStorage: Storage;
 
-	constructor(@Inject('PERSISTENCE_CONFIG') config: PersistenceConfig) {
-		const { notifyOptions, prefix, storageType } = config;
+	constructor(@Inject("PERSISTENCE_CONFIG") config: PersistenceConfig) {
+		const {notifyOptions, prefix, storageType} = config;
 
 		if (notifyOptions != null) {
-			const { setItem, removeItem } = notifyOptions;
+			const {setItem, removeItem} = notifyOptions;
 			this.setNotify(!!setItem, !!removeItem);
 		}
 		if (prefix != null) {
@@ -73,8 +76,8 @@ export class PersistenceService {
 	public clearAll(regularExpression?: string): boolean {
 		// Setting both regular expressions independently
 		// Empty strings result in catchall RegExp
-		const prefixRegex = !!this.prefix ? new RegExp('^' + this.prefix) : new RegExp('');
-		const testRegex = !!regularExpression ? new RegExp(regularExpression) : new RegExp('');
+		const prefixRegex = !!this.prefix ? new RegExp("^" + this.prefix) : new RegExp("");
+		const testRegex = !!regularExpression ? new RegExp(regularExpression) : new RegExp("");
 
 		if (!this.isSupported) {
 			this.warnings.next(LOCAL_STORAGE_NOT_SUPPORTED);
@@ -108,37 +111,108 @@ export class PersistenceService {
 		return count;
 	}
 
-	public get<T>(key: string): T {
+	public get<T>(key: string, ...path: string[]): T {
 		if (!this.isSupported) {
 			this.warnings.next(LOCAL_STORAGE_NOT_SUPPORTED);
 			return null;
 		}
 
 		const item = this.webStorage ? this.webStorage.getItem(this.deriveKey(key)) : null;
-		// FIXME: not a perfect solution, since a valid 'null' string can't be stored
-		if (!item || item === 'null') {
+
+		// TODO: not a perfect solution, since a valid 'null' string can't be stored
+		if (!item || item === "null") {
 			return null;
 		}
 
 		try {
-			return JSON.parse(item);
+			let parsed = JSON.parse(item);
+
+			if (!path || path.length === 0) {
+				return parsed;
+			}
+
+			if (!parsed) {
+				return null;
+			}
+
+			for (const string of path) {
+				parsed = parsed[string];
+			}
+
+			return parsed;
 		} catch (e) {
 			return null;
 		}
+	}
+
+	public set(value: any, key: string, ...path: string[]): boolean {
+		// Let's convert `undefined` values to `null` to get the value consistent
+		if (value === undefined) {
+			value = null;
+		}
+
+		if (!this.isSupported) {
+			this.warnings.next(LOCAL_STORAGE_NOT_SUPPORTED);
+			return false;
+		}
+
+		try {
+			if (this.webStorage) {
+				// Determine if we need to go deeper
+				if (path && path.length > 0) {
+					// Create a temporary structure to hold the "deepening"
+					const cache: Dictionary<any> = this.get(key) || {};
+					let level = 0;
+
+					path.reduce((a, b) => {
+						level++;
+
+						if (typeof a[b] === "undefined" && level !== path.length) {
+							a[b] = {};
+							return a[b];
+						}
+
+						if (level === path.length) {
+							a[b] = value;
+							return value;
+						} else {
+							return a[b];
+						}
+					}, cache);
+
+					// We set with value, so write cache to value
+					value = cache;
+				}
+
+				this.webStorage.setItem(this.deriveKey(key), JSON.stringify(value));
+			}
+
+			if (this.notifyOptions.setItem) {
+				this.setItems.next({
+					key: path[0],
+					value: value,
+					storageType: this.storageType,
+				});
+			}
+		} catch (e) {
+			this.errors.next(e.message);
+			return false;
+		}
+		return true;
 	}
 
 	public getStorageType(): string {
 		return this.storageType;
 	}
 
-	public keys(): Array<string> {
+	public keys(): string[] {
 		if (!this.isSupported) {
 			this.warnings.next(LOCAL_STORAGE_NOT_SUPPORTED);
 			return [];
 		}
 
 		const prefixLength = this.prefix.length;
-		const keys: Array<string> = [];
+		const keys: string[] = [];
 		for (const key in this.webStorage) {
 			// Only return keys that are for this app
 			if (key.substr(0, prefixLength) === this.prefix) {
@@ -153,7 +227,7 @@ export class PersistenceService {
 		return keys;
 	}
 
-	public remove(...keys: Array<string>): boolean {
+	public remove(...keys: string[]): boolean {
 		let result = true;
 		keys.forEach((key: string) => {
 			if (!this.isSupported) {
@@ -166,7 +240,7 @@ export class PersistenceService {
 				if (this.notifyOptions.removeItem) {
 					this.removeItems.next({
 						key: key,
-						storageType: this.storageType
+						storageType: this.storageType,
 					});
 				}
 			} catch (e) {
@@ -175,37 +249,6 @@ export class PersistenceService {
 			}
 		});
 		return result;
-	}
-
-	public set(key: string, value: any): boolean {
-		// Let's convert `undefined` values to `null` to get the value consistent
-		if (value === undefined) {
-			value = null;
-		} else {
-			value = JSON.stringify(value);
-		}
-
-		if (!this.isSupported) {
-			this.warnings.next(LOCAL_STORAGE_NOT_SUPPORTED);
-			return false;
-		}
-
-		try {
-			if (this.webStorage) {
-				this.webStorage.setItem(this.deriveKey(key), value);
-			}
-			if (this.notifyOptions.setItem) {
-				this.setItems.next({
-					key: key,
-					value: value,
-					storageType: this.storageType
-				});
-			}
-		} catch (e) {
-			this.errors.next(e.message);
-			return false;
-		}
-		return true;
 	}
 
 	private deriveKey(key: string): string {
@@ -227,7 +270,7 @@ export class PersistenceService {
 				// "QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made
 				// to add something to storage that exceeded the quota."
 				const key = this.deriveKey(`__${Math.round(Math.random() * 1e7)}`);
-				this.webStorage.setItem(key, '');
+				this.webStorage.setItem(key, "");
 				this.webStorage.removeItem(key);
 			}
 
@@ -243,13 +286,13 @@ export class PersistenceService {
 
 		// If there is a prefix set in the config let's use that with an appended
 		// period for readability:
-		const PERIOD = '.';
+		const PERIOD = ".";
 		if (this.prefix && !this.prefix.endsWith(PERIOD)) {
-			this.prefix = !!this.prefix ? `${this.prefix}${PERIOD}` : '';
+			this.prefix = !!this.prefix ? `${this.prefix}${PERIOD}` : "";
 		}
 	}
 
-	private setStorageType(storageType: 'sessionStorage' | 'localStorage'): void {
+	private setStorageType(storageType: "sessionStorage" | "localStorage"): void {
 		this.storageType = storageType;
 	}
 

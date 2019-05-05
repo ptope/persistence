@@ -1,8 +1,11 @@
 {
+	"extends": "tslint:recommended",
 	"rulesDirectory": [
-		"node_modules/codelyzer"
+		"codelyzer"
 	],
 	"rules": {
+		"no-angle-bracket-type-assertion": false,
+		"ordered-imports": false,
 		"arrow-return-shorthand": true,
 		"callable-types": true,
 		"class-name": true,
@@ -18,7 +21,6 @@
 		"forin": true,
 		"import-blacklist": [
 			true,
-			"rxjs",
 			"rxjs/Rx"
 		],
 		"import-spacing": true,
@@ -28,24 +30,30 @@
 		],
 		"interface-over-type-literal": true,
 		"label-position": true,
-		"max-line-length": [
-			true,
-			140
-		],
-		"member-access": false,
+		"member-access": true,
 		"member-ordering": [
 			true,
 			{
 				"order": [
-					"static-field",
-					"instance-field",
-					"static-method",
-					"instance-method"
+					"public-static-field",
+					"private-static-field",
+					"protected-static-field",
+					"public-instance-field",
+					"private-instance-field",
+					"protected-instance-field",
+					"public-constructor",
+					"private-constructor",
+					"protected-constructor",
+					"public-instance-method",
+					"public-static-method",
+					"private-instance-method",
+					"protected-instance-method",
+					"private-static-method",
+					"protected-static-method"
 				]
 			}
 		],
 		"no-arg": true,
-		"no-bitwise": true,
 		"no-console": [
 			true,
 			"debug",
@@ -60,6 +68,10 @@
 		"no-empty": false,
 		"no-empty-interface": true,
 		"no-eval": true,
+		"object-literal-shorthand": [
+			true,
+			"never"
+		],
 		"no-inferrable-types": [
 			true,
 			"ignore-params"
@@ -76,6 +88,8 @@
 		"no-use-before-declare": true,
 		"no-var-keyword": true,
 		"object-literal-sort-keys": false,
+		"only-arrow-functions": true,
+		"ban-comma-operator": true,
 		"one-line": [
 			true,
 			"check-open-brace",
@@ -116,7 +130,8 @@
 			"check-decl",
 			"check-operator",
 			"check-separator",
-			"check-type"
+			"check-type",
+			"check-module"
 		],
 		"directive-selector": [
 			true,
@@ -134,11 +149,13 @@
 		"use-input-property-decorator": true,
 		"use-output-property-decorator": true,
 		"use-host-property-decorator": true,
-		"no-input-rename": true,
-		"no-output-rename": true,
 		"use-life-cycle-interface": true,
 		"use-pipe-transform-interface": true,
 		"component-class-suffix": true,
-		"directive-class-suffix": true
+		"directive-class-suffix": true,
+		"max-line-length": [
+			true,
+			120
+		]
 	}
 }
