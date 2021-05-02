@@ -13,8 +13,12 @@
 					"builder": "@angular-devkit/build-ng-packagr:build",
 					"options": {
 						"tsConfig": "projects/persistence/tsconfig.lib.json",
-						"project": "projects/persistence/ng-package.json",
-						"aot": true
+						"project": "projects/persistence/ng-package.json"
+					},
+					"configurations": {
+						"production": {
+							"tsConfig": "projects/persistence/tsconfig.lib.prod.json"
+						}
 					}
 				},
 				"test": {
