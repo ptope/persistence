@@ -6,7 +6,7 @@ import { PersistenceConfig } from "./persistence.config";
 	providers: [PersistenceService],
 })
 export class PersistenceModule {
-	public static withConfig(userConfig: PersistenceConfig = {}): ModuleWithProviders {
+	public static withConfig(userConfig: PersistenceConfig = {}): ModuleWithProviders<PersistenceModule> {
 		return {
 			ngModule: PersistenceModule,
 			providers: [
