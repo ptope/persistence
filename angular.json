@@ -10,7 +10,7 @@
 			"prefix": "lib",
 			"architect": {
 				"build": {
-					"builder": "@angular-devkit/build-ng-packagr:build",
+					"builder": "@angular-devkit/build-angular:ng-packagr",
 					"options": {
 						"tsConfig": "projects/persistence/tsconfig.lib.json",
 						"project": "projects/persistence/ng-package.json"
